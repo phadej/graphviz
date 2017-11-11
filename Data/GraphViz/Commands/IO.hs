@@ -33,7 +33,6 @@ import Data.GraphViz.Internal.State (initialState)
 import Data.GraphViz.Printing       (toDot)
 import Data.GraphViz.Types          (ParseDotRepr, PrintDotRepr, parseDotGraph,
                                      printDotGraph)
-import Text.PrettyPrint.Leijen.Text (displayT, renderOneLine)
 
 import           Control.Concurrent        (MVar, forkIO, newEmptyMVar, putMVar,
                                             takeMVar)
@@ -56,13 +55,15 @@ import           System.IO.Temp            (withSystemTempFile)
 import           System.Process            (runInteractiveProcess,
                                             waitForProcess)
 
+import           Data.Text.Prettyprint.Doc (layoutCompact)
+import           Data.Text.Prettyprint.Doc.Render.Text (renderLazy)
 
 -- -----------------------------------------------------------------------------
 
 -- | Correctly render Graphviz output in a more machine-oriented form
 --   (i.e. more compact than the output of 'renderDot').
 renderCompactDot :: (PrintDotRepr dg n) => dg n -> Text
-renderCompactDot = displayT . renderOneLine
+renderCompactDot = renderLazy . layoutCompact
                    . (`evalState` initialState)
                    . toDot
 

@@ -46,8 +46,7 @@
       <http://graphviz.org/doc/info/lang.html>
 -}
 module Data.GraphViz.Printing
-    ( module Text.PrettyPrint.Leijen.Text.Monadic
-    , DotCode
+    ( DotCode
     , renderDot -- Exported for Data.GraphViz.Types.Internal.Common.printSGID
     , PrintDot(..)
     , unqtText
@@ -62,7 +61,32 @@ module Data.GraphViz.Printing
     , angled
     , fslash
     , printColorScheme
+    -- * internals
+    , (<>), (<+>)
+    , empty
+    , dquotes
+    , braces
+    , vcat
+    , indent
+    , lbrace
+    , rbrace
+    , parens
+    , brackets
+    , punctuate
+    , hcat
+    , cat
+    , align
+    , hsep
+    , char
+    , int
+    , text
+    , equals
+    , comma
+    , colon
+    , semi
     ) where
+
+import Control.Applicative (liftA2)
 
 import Data.GraphViz.Internal.State
 import Data.GraphViz.Internal.Util
@@ -72,14 +96,8 @@ import Data.GraphViz.Attributes.ColorScheme
 -- Only implicitly import and re-export combinators.
 import           Data.Text.Lazy                       (Text)
 import qualified Data.Text.Lazy                       as T
-import           Text.PrettyPrint.Leijen.Text.Monadic hiding (Pretty(..),
-                                                       SimpleDoc(..), bool,
-                                                       displayIO, displayT,
-                                                       hPutDoc, putDoc,
-                                                       renderCompact,
-                                                       renderPretty, string,
-                                                       width, (<$>))
-import qualified Text.PrettyPrint.Leijen.Text.Monadic as PP
+import qualified Data.Text.Prettyprint.Doc as PP
+import           Data.Text.Prettyprint.Doc.Render.Text (renderLazy)
 
 import           Control.Monad             (ap, when)
 import           Control.Monad.Trans.State
@@ -87,6 +105,98 @@ import           Data.Char                 (toLower)
 import qualified Data.Set                  as Set
 import           Data.Version              (Version(..))
 import           Data.Word                 (Word16, Word8)
+
+type Doc = PP.Doc ()
+
+int :: (Applicative m) => Int -> m Doc
+int = pure . PP.pretty
+
+punctuate :: (Applicative m) => m Doc -> m [Doc] -> m [Doc]
+punctuate = liftA2 PP.punctuate
+
+empty :: (Applicative m) => m Doc
+empty = pure mempty
+
+hcat :: (Functor m) => m [Doc] -> m Doc
+hcat = fmap PP.hcat
+
+hsep :: (Functor m) => m [Doc] -> m Doc
+hsep = fmap PP.hsep
+
+align :: (Functor m) => m Doc -> m Doc
+align = fmap PP.align
+
+cat :: (Functor m) => m [Doc] -> m Doc
+cat = fmap PP.cat
+
+semi :: (Applicative m) => m Doc
+semi = pure PP.semi
+
+dot :: (Applicative m) => m Doc
+dot = pure PP.dot
+
+list :: (Functor m) => m [Doc] -> m Doc
+list = fmap PP.list
+
+rangle :: DotCode
+rangle = pure PP.rangle
+
+vcat :: (Functor m) => m [Doc] -> m Doc
+vcat = fmap PP.vcat
+
+langle :: DotCode
+langle = pure PP.langle
+
+equals :: DotCode
+equals = pure PP.equals
+
+comma :: DotCode
+comma = pure PP.comma
+
+dquotes :: DotCode -> DotCode
+dquotes = fmap PP.dquotes
+
+infixr 6 <>, <+>
+(<>) :: DotCode -> DotCode -> DotCode
+(<>) = liftA2 (PP.<>)
+
+(<+>) :: (Applicative m) => m Doc -> m Doc -> m Doc
+(<+>) = liftA2 (PP.<+>)
+
+char :: Char -> DotCode
+char = pure . PP.pretty
+
+text :: Text -> DotCode
+text = pure . PP.pretty
+
+colon :: (Applicative m) => m Doc
+colon = pure PP.colon
+
+double :: (Applicative m) => Double -> m Doc
+double = pure . PP.pretty
+
+braces :: (Functor m) => m Doc -> m Doc
+braces = fmap PP.braces
+
+parens :: (Functor m) => m Doc -> m Doc
+parens = fmap PP.parens
+
+indent :: (Functor m) => Int -> m Doc -> m Doc
+indent = fmap . PP.indent
+
+lbrace :: (Applicative m) => m Doc
+lbrace = pure PP.lbrace
+
+rbrace :: (Applicative m) => m Doc
+rbrace = pure PP.rbrace
+
+{-
+angles :: (Functor m) => m Doc -> m Doc
+angles = fmap PP.angles
+-}
+
+brackets :: (Functor m) => m Doc -> m Doc
+brackets = fmap PP.brackets
 
 -- -----------------------------------------------------------------------------
 
@@ -98,8 +208,7 @@ instance Show DotCode where
 
 -- | Correctly render Graphviz output.
 renderDot :: DotCode -> Text
-renderDot = PP.displayT . PP.renderPretty 0.4 80
-            . (`evalState` initialState)
+renderDot = renderLazy . PP.layoutPretty PP.defaultLayoutOptions . (`evalState` initialState)
 
 -- | A class used to correctly print parts of the Graphviz Dot language.
 --   Minimal implementation is 'unqtDot'.
